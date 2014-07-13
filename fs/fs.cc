@@ -150,6 +150,7 @@ int fs_t::read()
 		return ENOMEM;
 	}
 
+
 	readab(dev, 1, 1 + nimapblock + nzmapblock);
 	imapbuf = (buf_t**) allockm(AKERN|ACLEAR, sizeof(buf_t*) * nimapblock);
 	imap = (bitmap_t*) allockm(AKERN, sizeof(bitmap_t) * nimapblock);

@@ -182,7 +182,7 @@ struct tcpsock_t : public sock_t {
 
 	/* various input functions correspond to tcp-state */
 	void ackarrived(u32_t ack);
-	void input(pkt_t *pkt, iphdr_t *ih, tcphdr_t *ih);
+	void input(pkt_t *pkt, iphdr_t *ih, tcphdr_t *th);
 	void inputclosed(pkt_t *pkt, iphdr_t *ih, tcphdr_t *th);
 	void inputlisten(pkt_t *pkt, iphdr_t *ih, tcphdr_t *th);
 	void inputsynsent(pkt_t *pkt, iphdr_t *ih, tcphdr_t *th);

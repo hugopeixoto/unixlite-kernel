@@ -5,8 +5,8 @@
 #error "don't include root.h directly"
 #endif
 
-#define min(x, y) ((x) <? (y))
-#define max(x, y) ((x) >? (y))
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#define max(x, y) ((x) > (y) ? (x) : (y))
 #define minmax(min_, mid, max_) max(min_, min(mid, max_))
 #define between(a, b, c) ((a)<=(b) && (b)<(c))
 

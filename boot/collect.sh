@@ -11,7 +11,7 @@ echo "0x19790106UL,"
 
 nm --demangle --radix=x $1 > collect.nm
 
-cat collect.nm | grep __ctor1979 | grep -v __func__ | \
+cat collect.nm | grep __ctor1979 | grep -v __func__ | grep -v "global constructors keyed to" | \
 sort -k 3,3 | tee collect.log |
 awk '{ print "0x"$1"UL,"; }'
 echo "0x19790106UL,"

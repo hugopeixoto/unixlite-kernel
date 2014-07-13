@@ -58,10 +58,12 @@ static int readfs(dev_t dev, fs_t ** result)
 
 	if (!(fs = findfs(dev)))
 		fs = new fs_t(dev);
+
 	if (e = fs->read()) {
 		delete fs;
 		return e;
 	}
+
 	*result = fs;
 	return 0;
 }

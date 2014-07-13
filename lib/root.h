@@ -32,7 +32,8 @@ extern inline void dispose(object_t ** ptr)
 }
 
 #define	NULL 0
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)1)->MEMBER - 1)
+#define offsetof(st, m) __builtin_offsetof(st, m)
+//#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)1)->MEMBER - 1)
 
 #define DEBUG 1
 extern int printf(const char * fmt, ...)__attribute__((format(printf,1,2)));

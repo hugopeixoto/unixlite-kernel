@@ -10,7 +10,7 @@ endif
 CXXFLAGS := -c $(INCLUDE) -Wall  -Wnon-virtual-dtor -Wno-parentheses \
 	-Wno-pmf-conversions -Wno-pointer-arith  -Wno-unused-function \
 	-Wundef -fno-rtti -Wno-invalid-offsetof \
-	-fno-exceptions -fcheck-new
+	-fno-exceptions -fcheck-new -nostdlib -fno-builtin
 
 ifeq ($(DEBUG),1)
 CXXFLAGS := $(CXXFLAGS) -g -O 

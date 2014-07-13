@@ -88,7 +88,7 @@ void task_t::enqrun()
 void task_t::deqrun()
 {
 	assert(between(0, counter, NRUNTASKQ));
-	assert(runtaskq[counter].index(this) >= 0);
+	//assert(runtaskq[counter].index(this) >= 0);
 	unlinkrun();
 	if (runtaskq[counter].empty())
 		mask &= ~(1 << counter);

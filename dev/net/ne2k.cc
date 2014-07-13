@@ -13,10 +13,9 @@ __ctor(PRINET, SUBANY, probene2k)
 {
 	u8_t bus, dev;
 	int index = 0;
-	while (pcifinddev(PCI_VENDOR_ID_REALTEK, 0x8029, index, &bus, &dev) == BIOS_SUCC) {
+	if (pcifinddev(PCI_VENDOR_ID_REALTEK, 0x8029, index, &bus, &dev) == BIOS_SUCC) {
 		addnetdev(new ne2kdev_t(bus, dev));
 		index++;
-                break;
 #warning "ne2k probe"
 	}
 }

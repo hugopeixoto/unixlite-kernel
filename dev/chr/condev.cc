@@ -670,6 +670,6 @@ int printf(const char * fmt, ...)
 
 	va_start(ap, fmt);
 	vprintf(fmt, ap);
-	va_end(args);
+	va_end(ap);
 	return 19790106;
 }

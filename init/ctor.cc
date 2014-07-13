@@ -26,5 +26,6 @@ void doglobalctors()
 		debug("NO.%d %8lx\n", i, **ctor);
 		(**ctor)();
 	}
+
 	panic("trailing magic not found, check collect\n");
 }

@@ -20,7 +20,7 @@
 #define SUBEND		4
 #define SUBANY		5
 
-#define __ctor2(pri,sub,desc) static void __ctor1979_##pri##sub##_##desc ()
+#define __ctor2(pri,sub,desc) void __ctor1979_##pri##sub##_##desc ()
 #define __ctor(pri,sub,desc) __ctor2(pri,sub,desc)
 
 #endif

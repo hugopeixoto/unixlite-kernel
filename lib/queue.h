@@ -51,6 +51,7 @@ for (typeof(node) __vnode = (node = (queue).__tail(), (queue).vnode()), \
    @PREV -	offsetof(node_t, prev) */
 
 template types struct queue_tl {
+  int xxx;
 	typedef queue_tl args queue_t;
 	node_t * __next, * __prev;
 
@@ -92,6 +93,7 @@ template types struct queue_tl {
 	{
 		assert(NEXT + sizeof(node_t*) == PREV);
 		__next = __prev = vnode(); 
+    xxx = 2007;
 	}
 	void zapall()
 	{
@@ -267,7 +269,9 @@ public:
 #undef offsetof
 #if (__GNUC__ >= 3 && __GNUC_MINOR__ >= 4) || (__GNUC__ >= 4)
 #define offsetof(structure,field) \
-(__offsetof__(  (int)(&(static_cast<structure*>(0)->field))  ))
+(__builtin_offsetof(structure, field))
+//(__offsetof__(  (int)(&(static_cast<structure*>(0)->field))  ))
+
 #else
 #define offsetof(structure,field) ((int)&((structure*)0)->field)
 #endif
