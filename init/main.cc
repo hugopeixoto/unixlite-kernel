@@ -45,7 +45,7 @@ extern "C" int main()
 	printf("\033[1mUnixLite: A Light Weight Operating System Written in C++\n"
 	"COPYRIGHT (C) 2005 NUAA CS DEPT.\033[m\n");
 
-        printf("Total Memory Size is %d Meg\n", nphysmeg);
+  printf("Total Memory Size is %d Meg\n", nphysmeg);
 	i386init(); /* setup gdt,idt,cr0 */
 	allocbminit();
 	kpgtblinit(); /* setup cr3 */
@@ -53,12 +53,15 @@ extern "C" int main()
 	allockminit();
 	doglobalctors();
 	freebm();
+  printf("freebm\n");
 	launchidletask();
+  printf("pokemon\n");
 	return 0;
 }
 
 asmlinkage int syssetup()
 {
+  printf("syssetup\n");
 	allirqon();
 	inittask = curr;
 	allege(inittask->pid == 1);

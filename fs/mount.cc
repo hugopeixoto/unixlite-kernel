@@ -64,6 +64,7 @@ static int readfs(dev_t dev, fs_t ** result)
 		return e;
 	}
 
+  printf("pokemontrololo\n");
 	*result = fs;
 	return 0;
 }
@@ -187,10 +188,12 @@ void mountroot()
 {
 	int e;
 	inode_t * root;
+  printf("poopin\n");
 
 	allege(curr->pid == 1);
 	if (e =	readfs(bootparam.rootdev, &rootfs))
 		panic("unable to read root fs\n");
+printf("who saw? who did?\n");
 	root = rootfs->root;
 	allege(root->isdir());
 	root->peer = NULL;

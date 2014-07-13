@@ -33,6 +33,7 @@ int main(int argc, char ** argv)
 	if (argc != 4)
 		quit("usage: glue bootsect setup kern\n");
 	signal(SIGSEGV, sigsegv);
+  fprintf(stderr, "Hello?\n");
 	gluebootsect(argv[1]);
 	gluesetup(argv[2]);
 	gluekern(argv[3]);
@@ -47,6 +48,7 @@ void gluebootsect(char * file)
 
 	bootsectfile = (char*) xmmap(file);
 	getelfphdr(bootsectfile, &code, &data);
+  fprintf(stderr, "> %d <= %d\n", code->filesz, SECTSIZE);
 	assert(!code->vaddr && code->filesz <= SECTSIZE && !data->filesz);
 	memcpy(bootsect, bootsectfile + code->offset, code->filesz);
 }

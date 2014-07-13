@@ -126,6 +126,7 @@ int fs_t::read()
 		unlock();
 		return e;
 	}
+  printf("pokemon digimon\n");
 	minixdfs_t * dfs = (minixdfs_t*)(b->data);
 	ninode = dfs->ninode;
 	nzone16 = dfs->nzone16;
@@ -159,12 +160,16 @@ int fs_t::read()
 	int block = 2;
 
 	for (i = 0; i < nimapblock; i++) {
+  printf("ccccccccccch\n");
 		if (e = readb(dev, block++, imapbuf + i)) {
+      printf("sou um read\n");
 			freeimap();
 			unlock();
 			return e;
 		}
+  printf("aaaaaaaaaaah\n");
 		new (imap + i) bitmap_t(imapbuf[i]->data, 1<<BITS);
+  printf("bbbbbbbbbbbh\n");
 	}
 
 	for (i = 0; i < nzmapblock; i++) {
