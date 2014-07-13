@@ -1,0 +1,285 @@
+#include <lib/root.h>
+#include <lib/string.h>
+#include <init/ctor.h>
+#include <asm/io.h>
+#include <asm/irq.h>
+#include <boot/bootparam.h>
+#include "hd.h"
+#include "hdreg.h"
+
+#undef debug
+#define debug(...)
+
+#define DEFAULTMULTSECT 4
+#define MAXHD 2
+#define DEVPERHD 5
+static int hdnum = 1;
+static struct hddev_t {
+	bno_t startsect;
+	bno_t nsect;
+} hddev[MAXHD * DEVPERHD];
+static hdgeo_t * hdgeo;
+static int multcount[MAXHD];
+static hd_t hd;
+
+static inline int deviceno(dev_t dev)
+{
+	return minor(dev)/DEVPERHD; 
+}
+
+hd_t::hd_t()
+{
+	curisr = &hd_t::nullisr;
+	allocirq(&hd_t::isr, this, HDIRQ);
+	irqon(HDIRQ);
+	/* bochs doesn't work if lack the following line,
+	   see bochs/iodev/harddrv.cc */
+	outbp(0,0x3f6);
+}
+
+hd_t::~hd_t()
+{
+}
+
+__ctor(PRIDEV, SUBANY, harddisk)
+{
+	construct(&hd);
+	blkdevvec[HDMAJOR] = &hd;
+	hdgeo = bootparam.hdgeo;
+
+	printf("harddisk cyl:%d, head:%d, sect:%d\n", 
+		hdgeo->cyl, hdgeo->head, hdgeo->sect);
+}
+
+static inline void readsect(char * buf)
+{
+	insw(HDDATA, buf, SECTSIZE/2);
+}
+
+static inline void writesect(char * buf)
+{
+	outsw(HDDATA, buf, SECTSIZE/2);
+}
+
+#define DEBUGHD 1
+static char * string[] = {"err","idx","ecc","drq","seek","werr","rdy","bsy"};
+static void showstat(int stat)
+{
+#if DEBUGHD
+	for (int i = 0; i < 8; i++, stat >>= 1)
+		printf("%s:%s ", string[i], (stat & 1) ? "ON" : "__"); 
+	printf("\n");
+#endif
+}
+
+static int ioerror()
+{
+	int mask = BSYSTAT | RDYSTAT | SEEKSTAT | ERRSTAT;
+	int good = RDYSTAT | SEEKSTAT;
+	return (inb(HDSTAT) & mask) != good;
+}
+
+static void waitdrq()
+{
+	for(int i = 0; i < 1000; i++) {
+		if (inbp(HDSTAT) & DRQSTAT)
+			return;
+	}
+	warn("waitdrq failed\n");
+}
+
+static void waitrdy()
+{
+	int retry = 1024;
+
+	while (retry--)
+		if ((inbp(HDSTAT) & (BSYSTAT|RDYSTAT)) == RDYSTAT)
+			return;
+	warn("wait for controller ready failed, stat:%s\n");
+	showstat(inb(HDSTAT));
+}
+
+/* sector start from 1 not 0 */
+void hd_t::rw(int cmd, int drv, int cyl, int head, int sect, int nsect)
+{
+	debug("hdrw: drv:%d cyl:%d head:%d sect:%d nsect:%d\n", 
+		drv, cyl, head, sect, nsect);
+	waitrdy();
+	outbp(cyl&0xff, HDLCYL);
+	outbp(cyl>>8, HDHCYL);
+	outbp(0xA0|(drv<<4)|head, HDDRVHEAD);
+	outbp(sect, HDSECT);
+	outbp(nsect, HDNSECT);
+	outbp(cmd, HDCMD);
+}
+
+void hd_t::isr(int irqno)
+{
+	(*curisr)(this, irqno);
+}
+
+void hd_t::nullisr(int irqno)
+{
+	warn("unexpected isr\n");
+}
+
+static int mmm = 1;
+/* IO INT RD */ 
+void hd_t::readisr(int irqno)
+{
+	assert(curreq && curreq->cmd == BREAD);
+	if (ioerror()) {
+		curreq->error(mmm);
+		return;
+	}
+	waitdrq();
+	char * sect;
+	foreachsect(sect, curreq, mmm) {
+		readsect(sect);
+	}
+	curreq->advance(mmm);
+	if (!curreq->more()) {
+		curisr = &hd_t::nullisr;
+		endcurreq();
+	}
+}
+
+/* WR IO INT */
+void hd_t::writeisr(int irqno)
+{
+	assert(curreq && curreq->cmd == BWRITE);
+	if (ioerror()) {
+		curreq->error(mmm);
+		return;
+	}
+	curreq->advance(mmm);
+	if (!curreq->more()) {
+		curisr = &hd_t::nullisr;
+		endcurreq();
+		return;
+	}
+	waitdrq();
+	char * sect;
+	foreachsect(sect, curreq, mmm)
+		writesect(sect);
+}
+
+void hd_t::setmultisr(int irqno)
+{
+	int stat = inbp(HDSTAT);
+
+	if (stat & (BSYSTAT | ERRSTAT)) {
+		printf("harddisk set multiple mode failed\n");
+		return;
+	}
+	int dev = 0;
+	printf("hd%c enabled %d-sector multiple mode\n", 
+		dev+'a', multcount[dev]);
+}
+
+void hd_t::docurreq()
+{
+	int cmd, drv, start, cyl, head, sect, nsect;
+
+	if (curreq->cmd == BREAD) {
+		cmd = WINREAD;
+		curisr = &hd_t::readisr;
+	} else {
+		cmd = WINWRITE;
+		curisr = &hd_t::writeisr;
+	}
+	drv = deviceno(curreq->dev);
+
+	if (minor(curreq->dev) >= MAXHD * DEVPERHD) {
+		warn("invalid dev:%x\n", curreq->dev);
+		curreq->error(curreq->nsect);
+		endcurreq();
+		return;
+	}
+	
+	hddev_t * d = hddev + minor(curreq->dev);
+	start = curreq->startsect + d->startsect;
+	nsect = curreq->nsect;
+	assert(nsect < 255);
+	if ((start < d->startsect) ||
+	    (d->startsect + d->nsect < start + nsect)) {
+		warn("start:%d,nsect:%d out of range on dev %x start:%ld,"
+	"nsect:%ld)\n", start, nsect, curreq->dev, d->startsect, d->nsect);
+		curreq->error(curreq->nsect);
+		endcurreq();
+		return;
+	}
+	hdgeo_t * g = hdgeo + drv;
+	sect = start % g->sect;
+	start = start / g->sect;
+	head = start % g->head;	
+	cyl = start / g->head;
+        rw(cmd, drv, cyl, head, ++sect, nsect);
+
+	if (cmd == WINWRITE) {
+		waitdrq();
+		char * s;
+		foreachsect(s, curreq, mmm)
+			writesect(s);
+	}
+	return;
+}
+
+int hd_t::ioctl(dev_t dev, int req, ulong arg)
+{
+	return -1;
+}
+
+ulong hd_t::getsize(dev_t dev)
+{
+	if (minor(dev) > hdnum * DEVPERHD)
+		return 0;
+	return hddev[minor(dev)].nsect << SECTBITS;
+}
+
+/* Partition types. */
+#define MINIXPART	0x81	/* Minix partition type */
+#define EXTPART		0x05	/* extended partition */
+
+struct parttab_t {
+	u8_t bootflag;		/* 0x80 - active */
+	u8_t head;		/* starting head */
+	u8_t sect;		/* starting sector */
+	u8_t cyl;		/* starting cylinder */
+	u8_t sysflag;		/* What partition type */
+	u8_t ehead;		/* end head */
+	u8_t esect;		/* end sector */
+	u8_t ecyl;		/* end cylinder */
+	u32_t startsect;	/* starting sector counting from 0 */
+	u32_t nsect;		/* nr of sectors in partition */
+};
+
+void readparttab()
+{
+	hdgeo_t * g;
+	hddev_t * d, * d2;
+
+	for (g = hdgeo, d = hddev; g < hdgeo + hdnum; g++, d += DEVPERHD) {
+		d->startsect = 0;
+		d->nsect = g->cyl * g->head * g->sect;
+	}
+	dev_t dev = mkdev(HDMAJOR, 0);
+	for (d = hddev; d < hddev + hdnum * DEVPERHD; d += DEVPERHD) {
+		buf_t * b;
+		int e;
+		if (e = readb(dev, 0, &b))
+			panic("unable to read partition table\n");
+		if (b->data[510] != 0x55 || b->data[511] != (char)0xAA)
+			panic("bad partition table\n");
+		parttab_t * p = (parttab_t *) (b->data + 0x1BE);
+		for (d2 = d + 1; d2 < d + DEVPERHD; d2++, p++) {
+			d2->startsect = p->startsect;
+			d2->nsect = p->nsect;
+			debug("partion%1d:startsect:%d,nsect:%d\n",
+			d2 - (d + 1), p->startsect, p->nsect);
+		}
+		b->lose();
+		dev += DEVPERHD;
+	}
+	debug("read parttion table ok\n");
+}

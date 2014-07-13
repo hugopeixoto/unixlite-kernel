@@ -1,0 +1,9 @@
+last change time:2006-06-15_00-48-14
+
+2005/10/7: outsw() bug fix
+
+2005/6/9: time, alarm, bios memory
+
+
+net/lib/sock.cc:wait for sndbuf
+net/inet/tcpoutput.cc:sndwnd

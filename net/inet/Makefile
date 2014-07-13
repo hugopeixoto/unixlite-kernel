@@ -1,0 +1,4 @@
+EXTRA_CXXFLAGS	:=
+EXTRA_ASFLAGS	:=
+EXTRA_LDFLAGS 	:= -r
+include	$(TOPDIR)/Rules.make

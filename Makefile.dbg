@@ -1,0 +1,44 @@
+DATE=$(shell date +%Y-%m-%d_%H-%M-%S)
+back:
+	@sed -e 's/\(last change time:\).*/\1'$(DATE)'/' ChangeLog > $(DATE) 
+	@mv $(DATE) ChangeLog
+	@(cd ..; tar zcvf back/kernel_$(DATE).tgz kernel-0.2)
+
+qemu:
+	dd if=Image of=../image/fd0 conv=notrunc
+	qemu -fda ../image/fd0 -hda ../image/hd0  -m 16 -boot a &
+	#sleep 1 && /usr/sbin/tcpdump -i tun0 -v &
+
+bochs: Image
+	dd if=Image of=../image/fd0 conv=notrunc
+	(cd ../bochs; ./run)
+
+TESTSUITE:=$(TOPDIR)/../testsuite
+LADDR:=172.20.0.1
+FADDR:=172.20.0.2
+LPORT:=3456
+FPORT:=3456
+
+ping:
+	ping $(FADDR)
+
+ucli: 
+	$(TESTSUITE)/udpecho/client $(FADDR) $(FPORT) helloudp
+	
+usrv:
+	$(TESTSUITE)/udpecho/server $(LADDR) $(LPORT)
+
+tcli: 
+	$(TESTSUITE)/tcpecho/client $(FADDR) $(FPORT) hellotcp
+	
+tsrv:
+	$(TESTSUITE)/tcpecho/server $(LADDR) $(LPORT)
+
+tsnd: 
+	$(TESTSUITE)/tcpsend/tcpsend $(FADDR) $(FPORT) package
+	
+trcv:
+	$(TESTSUITE)/tcpsend/tcprecv $(LADDR) $(LPORT) log
+
+wget:
+	wget http://$(FADDR)/minix.html
